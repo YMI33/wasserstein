@@ -110,7 +110,7 @@ def MMT(inputdata):
     cp    = np.array(cplst)
     return cp
 
-def data_pre_process(flag='global'):
+def data_pre_process():
         gfile  = Gvar()
         # ERA5
         #varnm  = 't2m'
@@ -129,16 +129,27 @@ def data_pre_process(flag='global'):
             gfile.set(['x 1','y 1','time 01jan%i 31dec%i'%((years+yeare+1)/2,yeare)])
             data2 = gfile.hems(varnm,'g')
         elif flag=='regional':
-            gfile.set(['lon -178 180','time 01jan%i 31dec%i'%(years,(years+yeare-1)/2)])
-            if dataset == 'CRU':
-                gfile.set(['lon -178 177','time 01jan%i 31dec%i'%(years,(years+yeare-1)/2)])
-            data1 = gfile.xarray(varnm)[varnm] 
-            gfile.set(['lon -178 180','time 01jan%i 31dec%i'%((years+yeare+1)/2,yeare)])
-            if dataset == 'CRU':
-                gfile.set(['lon -178 177','time 01jan%i 31dec%i'%((years+yeare+1)/2,yeare)])
-            data2 = gfile.xarray(varnm)[varnm] 
+            dstore = []
+            for yr in np.arange(years,(years+yeare+1)/2):
+                print(yr)
+                gfile.ga('open %s'%filenm)
+                gfile.set(['lon -178 180','time 01jan%i 31dec%i'%(yr,yr)])
+                #dstore.append(np.mean(gfile.hems(varnm,'g') - 273.15))
+                dstore.append(gfile.xarray(varnm)[varnm])
+                gfile.ga('reinit')
+            data1  = xr.concat(dstore,dim='time')
             
-        return data1,data2 
+            dstore = []
+            for yr in np.arange((years+yeare+1)/2,yeare+1):
+                print(yr)
+                gfile.ga('open %s'%filenm)
+                gfile.set(['lon -178 180','time 01jan%i 31dec%i'%(yr,yr)])
+                #dstore.append(np.mean(gfile.hems(varnm,'g') - 273.15))
+                dstore.append(gfile.xarray(varnm)[varnm])
+                gfile.ga('reinit')
+            data2  = xr.concat(dstore,dim='time')
+            
+        return data1,data2
 
 def data_mean_loop(manufact=None):
     import scipy.stats as stats
@@ -373,11 +384,11 @@ def site_case():
     return
 
 dataset= 'ER20'
-varnm  = 'skt'
+varnm  = 'air'
 filemp = {
     'GISSTEMP': './GISSTEMP/air.2x2.250.mon.anom.comb.nc',
     'CRU': './CRU/air.mon.anom.median.nc',
-    'ER20':'./input/skt.ctl',
+    'ER20':'./input/air.sfc.ctl',
     'ER20_TEST':'./input_air/air.2m.ctl'
 }
 filenm = filemp[dataset]
